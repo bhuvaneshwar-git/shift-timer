@@ -104,7 +104,6 @@ summary{cursor:pointer;font-weight:600}
         <button class="main" id="go">Start</button>
         <button id="nextb" aria-label="Next block">⏭</button>
         <button id="reset">Reset</button>
-        <button id="demo">Demo x60</button>
       </div>
       <p class="note" id="modeNote"></p>
     </section>
@@ -138,7 +137,8 @@ function build(){
   const segs=[];let cur=0;
   bs.forEach(b=>{if(b.a>cur)segs.push({t:'work',a:cur,z:b.a});segs.push({t:'break',a:b.a,z:b.z});cur=b.z;});
   if(cur<len)segs.push({t:'work',a:cur,z:len});
-  let w=0,k=0;segs.forEach(s=>{s.name=s.t==='work'?'Work '+(++w):'Break '+(++k);s.icon=s.t==='work'?'💼':'☕';});
+  const NAMES=['Work 1','Break 1','Work 2','Break 2','Work 3','Break 3','Work 4'];
+  segs.forEach((s,i)=>{s.name=NAMES[i]||('Block '+(i+1));s.icon=s.t==='work'?'💼':'☕';});
   return {st,len,segs};
 }
 
@@ -213,8 +213,7 @@ function setMode(m){
   if(m==='manual'){const B=build(),o=offset({...B});man.o=0;
     const n=new Date(),nm=n.getHours()*60+n.getMinutes(),lo=((nm-B.st)%1440+1440)%1440;man.o=lo<B.len?lo:0;}
   $('mLive').className=m==='live'?'on':'';$('mMan').className=m==='manual'?'on':'';
-  ['prev','go','nextb','reset','demo'].forEach(i=>$(i).style.display=m==='manual'?'':'none');
-  $('modeNote').textContent=m==='live'?'Live mode follows the real clock, so it is always correct.':'Manual mode: use the buttons to test the blocks. Demo x60 runs 1 minute per second.';
+  ['prev','go','nextb','reset'].forEach(i=>$(i).style.display=m==='manual'?'':'none');
   tick();
 }
 function cur(B,o){return o>=B.len?B.segs.length:B.segs.findIndex(s=>o>=s.a&&o<s.z);}
@@ -224,7 +223,6 @@ $('go').onclick=()=>{if(man.o>=build().len)man.o=0;man.run=!man.run;man.last=per
 $('prev').onclick=()=>{const B=build(),c=cur(B,man.o);man.o=B.segs[Math.max(0,c-1)].a;tick();};
 $('nextb').onclick=()=>{const B=build(),c=cur(B,man.o);man.o=c<B.segs.length-1?B.segs[c].z:B.len;tick();};
 $('reset').onclick=()=>{const B=build(),c=cur(B,man.o);man.run=false;man.o=c<B.segs.length?B.segs[c].a:0;tick();};
-$('demo').onclick=()=>{man.speed=man.speed===1?60:1;$('demo').textContent=man.speed===1?'Demo x60':'Normal speed';};
 $('mute').onclick=()=>{S.muted=!S.muted;$('mute').textContent=S.muted?'🔇':'🔔';save();if(!S.muted)beep();};
 $('notify').onclick=()=>{try{if('Notification' in window)Notification.requestPermission();}catch(e){}};
 $('theme').onclick=()=>{S.theme=S.theme==='dark'?'light':'dark';applyTheme();save();};
