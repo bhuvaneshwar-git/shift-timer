@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shift Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#0B1220;--card:#121C2E;--fg:#E8EEF7;--muted:#8DA0B8;--line:#22314A;--work:#4C9AFF;--brk:#34C79A;--ac:var(--work);--on:#0B1220}
+:root[data-theme="light"]{--bg:#F1F5F9;--card:#fff;--fg:#14202E;--muted:#5C6B7E;--line:#DCE3EC;--work:#2563EB;--brk:#0F9F76;--on:#fff}
+:root[data-phase="break"]{--ac:var(--brk)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+header h1{font-size:1.15rem;margin:0;font-weight:800}
+header small{display:block;color:var(--muted);font-weight:400;font-size:.8rem}
+.tools{display:flex;gap:6px;align-items:center}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--card)}
+button{font:inherit;font-weight:600;cursor:pointer;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 14px}
+.seg button{border:0;background:transparent;padding:6px 12px}
+.seg button.on,button.main{background:var(--ac);color:var(--on);border-color:var(--ac)}
+.seg button.on{background:var(--work);border-color:var(--work)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+.ov{margin-bottom:14px}
+.ovtop{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;margin-bottom:10px}
+.ovtop b{font-size:1.05rem}
+.stats{display:flex;gap:16px;color:var(--muted);font-size:.88rem;flex-wrap:wrap}
+.stats i{font-style:normal;font-weight:600;color:var(--fg);font-variant-numeric:tabular-nums}
+.bar{display:flex;gap:4px;height:12px}
+.bar div{background:var(--line);border-radius:6px;overflow:hidden}
+.bar div span{display:block;height:100%}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.timer{text-align:center}
+.lab{display:flex;justify-content:space-between;text-align:left;margin-bottom:10px;gap:10px}
+.lab b{font-size:1.2rem;color:var(--ac)}
+.lab span{color:var(--muted);font-size:.85rem}
+.ring{position:relative;width:min(70vw,270px);aspect-ratio:1;margin:8px auto 16px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:9}
+.ring .t{stroke:var(--line)}
+.ring .p{stroke:var(--ac);stroke-linecap:round}
+.mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.mid b{font-size:clamp(2rem,10vw,2.9rem);font-weight:600;font-variant-numeric:tabular-nums}
+.mid span{color:var(--muted);font-size:.85rem;padding:0 16px}
+.ctl{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.note{color:var(--muted);font-size:.85rem;margin:0}
+ul{list-style:none;margin:0 0 16px;padding:0}
+li{display:flex;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:10px;color:var(--muted);font-size:.92rem}
+li.now{background:var(--bg);color:var(--fg);font-weight:600;box-shadow:inset 3px 0 var(--ac)}
+li.past{opacity:.45}
+h2{font-size:1rem;margin:0 0 8px}
+.add{display:flex;gap:6px;margin-bottom:8px}
+input[type=text],input[type=time],input[type=number]{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px;min-width:0}
+.add input{flex:1}
+.task{display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:.92rem}
+.task label{flex:1;cursor:pointer}
+.task.done label{text-decoration:line-through;color:var(--muted)}
+.task button{padding:2px 8px;border:0;background:transparent;color:var(--muted)}
+details{margin-top:14px;color:var(--muted);font-size:.88rem}
+summary{cursor:pointer;font-weight:600}
+.edit{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.edit label{display:flex;flex-direction:column;gap:3px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Shift Timer <small id="sub"></small></h1>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="Mode">
+        <button id="mLive" class="on">Live shift</button><button id="mMan">Manual</button>
+      </div>
+      <button id="mute" title="Sound on or off" aria-label="Sound on or off">🔔</button>
+      <button id="notify" title="Allow notifications" aria-label="Allow notifications">📢</button>
+      <button id="theme" title="Dark or light" aria-label="Dark or light">🌙</button>
+    </div>
+  </header>
+
+  <section class="card ov">
+    <div class="ovtop"><b id="status">Shift in progress</b><span class="stats">
+      <span>Clock <i id="clk">--</i></span>
+      <span>Work <i id="wd">0h / 8h</i></span>
+      <span>Break <i id="bd">0m / 60m</i></span>
+      <span><i id="pct">0%</i> done</span></span></div>
+    <div class="bar" id="bar"></div>
+  </section>
+
+  <div class="grid">
+    <section class="card timer">
+      <div class="lab"><div><b id="name">Work 1</b><br><span id="win"></span></div><span id="kind"></span></div>
+      <div class="ring">
+        <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="t" cx="60" cy="60" r="54"/>
+        <circle class="p" id="ring" cx="60" cy="60" r="54" stroke-dasharray="339.29" stroke-dashoffset="339.29"/></svg>
+        <div class="mid"><b id="time">00:00:00</b><span id="next"></span></div>
+      </div>
+      <div class="ctl" id="ctl">
+        <button id="prev" aria-label="Previous block">⏮</button>
+        <button class="main" id="go">Start</button>
+        <button id="nextb" aria-label="Next block">⏭</button>
+        <button id="reset">Reset</button>
+        <button id="demo">Demo x60</button>
+      </div>
+      <p class="note" id="modeNote"></p>
+    </section>
+
+    <section class="card">
+      <h2>Today's blocks</h2>
+      <ul id="list"></ul>
+      <h2 id="tt">Tasks for this block</h2>
+      <form class="add" id="addf"><input type="text" id="tin" placeholder="Add a task for this block" aria-label="New task"><button class="main">Add</button></form>
+      <div id="tasks"></div>
+      <details><summary>Edit schedule</summary><div class="edit" id="edit"></div></details>
+    </section>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const KEY='shift-timer-v2';
+let S={start:'17:00',end:'02:00',breaks:[{s:'19:00',m:15},{s:'21:00',m:15},{s:'23:00',m:30}],theme:'dark',muted:false,tasks:[]};
+try{Object.assign(S,JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+const tm=t=>{const [h,m]=t.split(':').map(Number);return h*60+m;};
+const clock=m=>{m=((Math.round(m)%1440)+1440)%1440;const h=Math.floor(m/60);return ((h%12)||12)+':'+String(m%60).padStart(2,'0')+' '+(h>=12?'PM':'AM');};
+const hms=s=>{s=Math.max(0,Math.ceil(s));return [Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(n=>String(n).padStart(2,'0')).join(':');};
+const dur=m=>{m=Math.round(m);return m>=60?Math.floor(m/60)+'h'+(m%60?' '+(m%60)+'m':''):m+'m';};
+const esc=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function build(){
+  const st=tm(S.start),len=((tm(S.end)-st+1440)%1440)||1440;
+  const off=t=>(tm(t)-st+1440)%1440;
+  const bs=S.breaks.map(b=>({a:off(b.s),z:Math.min(len,off(b.s)+(+b.m||0))})).filter(b=>b.z>b.a).sort((x,y)=>x.a-y.a);
+  const segs=[];let cur=0;
+  bs.forEach(b=>{if(b.a>cur)segs.push({t:'work',a:cur,z:b.a});segs.push({t:'break',a:b.a,z:b.z});cur=b.z;});
+  if(cur<len)segs.push({t:'work',a:cur,z:len});
+  let w=0,k=0;segs.forEach(s=>{s.name=s.t==='work'?'Work '+(++w):'Break '+(++k);s.icon=s.t==='work'?'💼':'☕';});
+  return {st,len,segs};
+}
+
+let mode='live',man={o:0,run:false,speed:1,last:0},prev=null,tkIdx=-2,ctx=null;
+document.addEventListener('click',()=>{if(!ctx)try{ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}},{once:true});
+function beep(){if(S.muted||!ctx)return;try{[0,.35,.7].forEach(t=>{const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=880;
+  o.connect(g);g.connect(ctx.destination);g.gain.setValueAtTime(.2,ctx.currentTime+t);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+t+.3);
+  o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+.3);});}catch(e){}}
+function ping(seg){beep();try{if('Notification' in window&&Notification.permission==='granted')
+  new Notification(seg.t==='break'?'Break time ('+dur(seg.z-seg.a)+')':'Back to work');}catch(e){}}
+
+function offset(B){
+  if(mode==='manual')return man.o;
+  const n=new Date(),nm=n.getHours()*60+n.getMinutes()+n.getSeconds()/60;
+  return ((nm-B.st)%1440+1440)%1440;
+}
+
+function tick(){
+  const B=build(),{st,len,segs}=B,now=performance.now();
+  if(mode==='manual'&&man.run){man.o=Math.min(len,man.o+(now-man.last)/60000*man.speed);if(man.o>=len)man.run=false;}
+  man.last=now;
+  const o=offset(B),inShift=o<len,idx=inShift?segs.findIndex(s=>o>=s.a&&o<s.z):-1;
+  if(prev!==null&&idx!==prev&&idx>=0)ping(segs[idx]);
+  prev=idx;
+  const ended=mode==='manual'&&o>=len;
+  document.documentElement.dataset.phase=idx>=0?segs[idx].t:'work';
+  $('sub').textContent=clock(st)+' to '+clock(st+len);
+  $('clk').textContent=mode==='live'?clock(new Date().getHours()*60+new Date().getMinutes()):clock(st+o);
+  let wd=0,bd=0,tw=0,tb=0;
+  segs.forEach(s=>{const d=Math.min(Math.max(o-s.a,0),s.z-s.a),l=s.z-s.a;if(s.t==='work'){wd+=d;tw+=l;}else{bd+=d;tb+=l;}});
+  $('wd').textContent=dur(wd)+' / '+dur(tw);$('bd').textContent=dur(bd)+' / '+dur(tb);
+  $('pct').textContent=(inShift?Math.round(o/len*100):ended?100:0)+'%';
+  $('bar').innerHTML=segs.map(s=>{const f=Math.min(Math.max((o-s.a)/(s.z-s.a),0),1)*100;
+    return '<div style="flex:'+(s.z-s.a)+'"><span style="width:'+f+'%;background:var(--'+(s.t==='work'?'work':'brk')+')"></span></div>';}).join('');
+  let left,frac=0;
+  if(idx>=0){
+    const s=segs[idx],n=segs[idx+1];left=(s.z-o)*60;frac=(o-s.a)/(s.z-s.a);
+    $('status').textContent=mode==='live'?'Shift in progress':man.run?'Manual timer running':'Manual timer paused';
+    $('name').textContent=s.icon+' '+s.name;$('win').textContent=clock(st+s.a)+' to '+clock(st+s.z);
+    $('kind').textContent=s.t==='work'?'Deep work':'Take a break';
+    $('next').textContent=n?'Next: '+n.name+' at '+clock(st+n.a):'Shift ends at '+clock(st+len);
+  }else{
+    left=ended?0:((1440-o)%1440)*60;frac=ended?1:0;
+    $('status').textContent=ended?'Shift complete':'Off shift';
+    $('name').textContent=ended?'All done':'Waiting for shift';$('win').textContent='';$('kind').textContent='';
+    $('next').textContent=ended?'Good work today':'Shift starts at '+clock(st);
+  }
+  $('time').textContent=hms(left);
+  $('ring').style.strokeDashoffset=339.29*(1-frac);
+  $('go').textContent=man.run?'Pause':'Start';
+  document.title=(idx>=0?hms(left)+' · '+segs[idx].name:'Shift Timer');
+  $('list').innerHTML=segs.map((s,i)=>'<li class="'+(i===idx?'now':idx>=0&&i<idx?'past':'')+'"><span>'+clock(st+s.a)+' to '+clock(st+s.z)+'</span><span>'+s.icon+' '+s.name+' · '+dur(s.z-s.a)+'</span></li>').join('');
+  if(idx!==tkIdx){tkIdx=idx;drawTasks();}
+}
+
+function drawTasks(){
+  const on=tkIdx>=0;$('addf').style.display=on?'flex':'none';
+  $('tt').textContent=on?'Tasks for this block':'Tasks (start of shift)';
+  const L=S.tasks.filter(t=>t.seg===tkIdx);
+  $('tasks').innerHTML=L.length?'':'<p class="note">No tasks yet for this block.</p>';
+  L.forEach(t=>{const d=document.createElement('div');d.className='task'+(t.done?' done':'');
+    d.innerHTML='<input type="checkbox" id="c'+t.id+'" '+(t.done?'checked':'')+'><label for="c'+t.id+'">'+esc(t.text)+'</label><button aria-label="Delete task">✕</button>';
+    d.querySelector('input').onchange=e=>{t.done=e.target.checked;save();drawTasks();};
+    d.querySelector('button').onclick=()=>{S.tasks=S.tasks.filter(x=>x!==t);save();drawTasks();};
+    $('tasks').appendChild(d);});
+}
+$('addf').onsubmit=e=>{e.preventDefault();const v=$('tin').value.trim();if(!v||tkIdx<0)return;
+  S.tasks.push({id:Date.now(),text:v,done:false,seg:tkIdx});$('tin').value='';save();drawTasks();};
+
+function setMode(m){
+  mode=m;man.run=false;prev=null;
+  if(m==='manual'){const B=build(),o=offset({...B});man.o=0;
+    const n=new Date(),nm=n.getHours()*60+n.getMinutes(),lo=((nm-B.st)%1440+1440)%1440;man.o=lo<B.len?lo:0;}
+  $('mLive').className=m==='live'?'on':'';$('mMan').className=m==='manual'?'on':'';
+  ['prev','go','nextb','reset','demo'].forEach(i=>$(i).style.display=m==='manual'?'':'none');
+  $('modeNote').textContent=m==='live'?'Live mode follows the real clock, so it is always correct.':'Manual mode: use the buttons to test the blocks. Demo x60 runs 1 minute per second.';
+  tick();
+}
+function cur(B,o){return o>=B.len?B.segs.length:B.segs.findIndex(s=>o>=s.a&&o<s.z);}
+$('mLive').onclick=()=>mode!=='live'&&setMode('live');
+$('mMan').onclick=()=>mode!=='manual'&&setMode('manual');
+$('go').onclick=()=>{if(man.o>=build().len)man.o=0;man.run=!man.run;man.last=performance.now();tick();};
+$('prev').onclick=()=>{const B=build(),c=cur(B,man.o);man.o=B.segs[Math.max(0,c-1)].a;tick();};
+$('nextb').onclick=()=>{const B=build(),c=cur(B,man.o);man.o=c<B.segs.length-1?B.segs[c].z:B.len;tick();};
+$('reset').onclick=()=>{const B=build(),c=cur(B,man.o);man.run=false;man.o=c<B.segs.length?B.segs[c].a:0;tick();};
+$('demo').onclick=()=>{man.speed=man.speed===1?60:1;$('demo').textContent=man.speed===1?'Demo x60':'Normal speed';};
+$('mute').onclick=()=>{S.muted=!S.muted;$('mute').textContent=S.muted?'🔇':'🔔';save();if(!S.muted)beep();};
+$('notify').onclick=()=>{try{if('Notification' in window)Notification.requestPermission();}catch(e){}};
+$('theme').onclick=()=>{S.theme=S.theme==='dark'?'light':'dark';applyTheme();save();};
+function applyTheme(){document.documentElement.dataset.theme=S.theme;$('theme').textContent=S.theme==='dark'?'🌙':'☀️';}
+
+function drawEdit(){
+  $('edit').innerHTML='<label>Shift start<input type="time" id="e1" value="'+S.start+'"></label><label>Shift end<input type="time" id="e2" value="'+S.end+'"></label>'+
+  S.breaks.map((b,i)=>'<label>Break '+(i+1)+' start<input type="time" data-i="'+i+'" data-k="s" value="'+b.s+'"></label><label>Break '+(i+1)+' minutes<input type="number" min="1" data-i="'+i+'" data-k="m" value="'+b.m+'"></label>').join('');
+  $('e1').onchange=e=>{if(e.target.value){S.start=e.target.value;save();tick();}};
+  $('e2').onchange=e=>{if(e.target.value){S.end=e.target.value;save();tick();}};
+  document.querySelectorAll('[data-i]').forEach(x=>x.onchange=e=>{const t=e.target;if(!t.value)return;
+    S.breaks[+t.dataset.i][t.dataset.k]=t.dataset.k==='m'?Math.max(1,+t.value):t.value;save();tick();});
+}
+applyTheme();$('mute').textContent=S.muted?'🔇':'🔔';drawEdit();setMode('live');setInterval(tick,500);
+</script>
+</body>
+</html>
